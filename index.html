@@ -22,7 +22,7 @@
     --line:rgba(255,255,255,.14);
   }
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
-  html,body{height:100%;}
+  html,body{height:100%;overscroll-behavior-y:none;} /* 당겨서 새로고침 막기 */
   body{
     font-family:'Gowun Dodum',sans-serif;
     background:
@@ -431,20 +431,39 @@ function drawMission(t){ ensureBag(t); const idx=bag[t][bagIdx[t]++]; return MIS
 function go(id){
   document.querySelectorAll('.screen').forEach(s=>s.classList.remove('on'));
   document.getElementById(id).classList.add('on');
+  save();
 }
-function pickType(t){
-  curType=t;
+function setBadge(t){
   const b=document.getElementById('qBadge');
   b.textContent = t==='brain' ? '🧠 두뇌' : '🏃 행동';
   b.className='badge '+t;
+}
+function pickType(t){
+  curType=t;
+  setBadge(t);
   showMission();
   go('quiz');
 }
-function showMission(){ document.getElementById('qText').textContent = drawMission(curType); }
+function showMission(){ document.getElementById('qText').textContent = drawMission(curType); save(); }
 function nextQuestion(){
   const el=document.getElementById('qText');
   el.style.opacity=0;
-  setTimeout(()=>{ el.textContent=drawMission(curType); el.style.opacity=1; },150);
+  setTimeout(()=>{ el.textContent=drawMission(curType); el.style.opacity=1; save(); },150);
+}
+
+/* ===== 새로고침(당겨서 새로고침 포함)해도 보던 화면·문제가 이어지게 탭 단위로 저장 ===== */
+const SK='3sec-state';
+function save(){
+  try{ sessionStorage.setItem(SK,JSON.stringify({scr:(document.querySelector('.screen.on')||{}).id,curType,bag,bagIdx,
+    q:document.getElementById('qText').textContent})); }catch(e){}
+}
+function restore(){
+  let s=null; try{ s=JSON.parse(sessionStorage.getItem(SK)); }catch(e){}
+  if(!s) return;
+  if(s.bag&&s.bagIdx){ bag=s.bag; bagIdx=s.bagIdx; }
+  if(s.curType==='brain'||s.curType==='act'){ curType=s.curType; setBadge(curType); }
+  if(s.q) document.getElementById('qText').textContent=s.q;
+  if(s.scr&&document.getElementById(s.scr)) go(s.scr);
 }
 
 /* ===== 타이머 (3·2·1 → 3초) ===== */
@@ -551,6 +570,7 @@ function changeTopic(){
   document.getElementById('readyTopic').textContent=t;
   document.getElementById('runTopic').textContent=t;
   beep(720,.1,.25);
+  save();
 }
 
 /* 같은 문제 그대로 다시 도전 (불합격 처리 등) */
@@ -566,6 +586,7 @@ function closeStage(){
 
 /* ===== 룰 모달 ===== */
 function toggleRules(s){ document.getElementById('rules').classList.toggle('on',s); }
+restore();
 </script>
 <script src="https://kwangbban.vercel.app/hub.js" defer></script>
 </body>
